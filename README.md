@@ -9,12 +9,15 @@
 
 This project builds a small Python prototype that extracts structured action items, decisions, and open questions from raw meeting notes using the Google Gemini API.
 
-**Business workflow:** A project manager pastes or pipes raw meeting transcript text into the tool. The system returns a structured JSON summary with:
+**Business workflow:** This project focuses on converting internal project meeting notes into structured action items.
+**User:** The primary user is a project manager or team member who needs a clear and actionable summary after a meeting.
+**Input:** Raw meeting transcript or notes in free-text form (English).
+**Output:** Structured JSON containing:
 - ✅ **Action items** — task description, owner, due date, and confidence level
 - 📌 **Decisions** — confirmed outcomes from the meeting
 - ❓ **Open questions** — items discussed but not resolved
 
-**Why this task?** Meeting notes are high-frequency, high-friction, and follow predictable patterns. The bottleneck is mechanical extraction, not judgment — making it a reasonable candidate for LLM assistance with human review on flagged items.
+**Why this task is valuable enough to automate or partially automate?** Meeting notes are high-frequency, high-friction, and follow predictable patterns. The bottleneck is mechanical extraction, not judgment — making it a reasonable candidate for LLM assistance with human review on flagged items.
 
 ---
 
