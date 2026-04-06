@@ -1,10 +1,5 @@
 # Meeting Action Item Extractor
 
-**Generative AI (BU.330.760) — Homework 2**
-**Author:** Edel Zhao | Johns Hopkins Carey Business School
-
----
-
 ## Overview
 
 This project builds a small Python prototype that extracts structured action items, decisions, and open questions from raw meeting notes using the Google Gemini API.
@@ -28,12 +23,12 @@ This project builds a small Python prototype that extracts structured action ite
 
 ```
 hw2-meeting-summarizer/
-├── README.md          ← This file (includes video link)
+├── README.md          ← This file
 ├── app.py             ← Main Python prototype
 ├── prompts.md         ← Prompt iteration log (V1 → V2 → V3)
 ├── eval_set.json      ← 5 evaluation test cases
-├── report.md          ← 1-2 page evaluation report
-└── outputs/           ← Generated output files (created at runtime)
+├── report.md          ← evaluation report
+└── outputs/           ← Generated output files
 ```
 
 ---
@@ -48,12 +43,10 @@ cd hw2-meeting-summarizer
 
 ### 2. Install dependencies
 ```bash
-pip install google-generativeai python-dotenv
+pip install google-genai python-dotenv
 ```
 
 ### 3. Add your API key
-Get a free API key from [Google AI Studio](https://aistudio.google.com/).
-
 Create a `.env` file in the project root:
 ```
 GEMINI_API_KEY=your_key_here
@@ -103,6 +96,7 @@ Five test cases in `eval_set.json` cover:
 
 ## Key Finding
 
+Even V1 avoided hallucination on Case 05. The main failure mode was not false invention, but silent omission — V2 dropped ambiguous items entirely. V3 solved this with confidence signaling.
 The most important prompt improvement was adding a **`confidence` field** and explicit rules for handling ambiguity. The model's default behavior is to resolve uncertainty helpfully — which means hallucinating ownership. Giving it permission to say `"owner": "Unclear"` with `"confidence": "low"` reduces hallucination more effectively than general "do not infer" rules.
 
 See `prompts.md` for the full iteration log and `report.md` for the complete evaluation.
@@ -117,5 +111,5 @@ See `prompts.md` for the full iteration log and `report.md` for the complete eva
 
 ## Model
 
-- **Model:** `gemini-1.5-flash` via Google AI Studio API
+- **Model:** `gemini-2.5-flash` via Google AI Studio API
 - **Why Flash over Pro:** Extraction task, not synthesis — Flash is faster, cheaper, and performed comparably on this eval set.
