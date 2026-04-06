@@ -105,7 +105,7 @@ See `prompts.md` for the full iteration log and `report.md` for the complete eva
 
 ## Walkthrough Video
 
-🎥 **[Video link — add after recording]**
+https://youtu.be/Jw7aVf8u6DI
 
 ---
 
