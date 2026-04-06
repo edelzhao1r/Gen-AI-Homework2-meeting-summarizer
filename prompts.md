@@ -14,16 +14,14 @@ You are a helpful assistant. Read the following meeting notes and extract the ke
 **What changed from nothing:** This was the first attempt — minimal instruction, no format constraints, no handling of uncertainty.
 
 **What worked:**
-- Correctly identified action items in Case 01 and Case 02.
-- Output was readable prose.
+- Cases 01 and 02: Content was accurate — all 4 action items correctly identified with the right owners and dates. 
+- Case 05: Contrary to expectations, the model did NOT invent action items. It correctly stated "None identified" and cited the source text. 
 
 **What failed:**
-- Case 03 (messy transcript): Model confidently assigned owners that were ambiguous in the source ("Jen will research Stripe pricing") — hallucinated certainty.
-- Case 05 (no action items): Model invented 2 action items that were never discussed ("Alex will schedule a follow-up", "Team will finalize sprint length by next week") — clear hallucination.
-- Output format varied significantly between runs; hard to parse downstream.
-- No distinction between confirmed decisions and open questions.
+- All 5 cases returned `JSONDecodeError` — output was free-form Markdown with headers and bullet points, which the downstream parser could not handle.
+- Output format varied between cases; no consistency guarantee
 
-**Verdict:** Fluent output, but structurally unreliable and prone to hallucination on ambiguous inputs.
+**Verdict:** Fluent output, but the output had no predictable shape.
 
 ---
 
@@ -52,15 +50,13 @@ Rules:
 
 **What worked:**
 - Case 01 and 02: Clean, parseable JSON output. All 4 action items correctly extracted with accurate owners and dates.
-- Case 04 (no owners): All 4 items listed with `"owner": "Unassigned"` — no fabrication.
-- Case 05: Returned empty `action_items` array on most runs — a significant improvement.
+- Case 04: All 4 items listed with `"owner": "Unassigned"` — no fabrication.
+- Case 05: Returned empty `action_items` array on most runs — with no hallucination.
 
 **What still failed:**
-- Case 03 (messy transcript): On 2 out of 3 runs, model still assigned a confident owner for the Stripe research item despite the ambiguity in the source. The rule "extract only what is explicitly stated" was not strong enough to override the model's tendency to resolve ambiguity.
-- Case 05: On 1 out of 3 runs, model still inserted a speculative action item — the rule was not consistently enforced.
-- No mechanism to flag low-confidence extractions; model either committed or left blank.
+- Case 03: The model  returned 0 action items entirely, treating the Stripe research task as too ambiguous to include at all. The task was silently dropped rather than flagged. This is a different failure mode than expected: not overconfidence, but excessive conservatism that loses useful information.
 
-**Verdict:** Major improvement in structure and parsability. Hallucination reduced but not eliminated on ambiguous cases.
+**Verdict:** Major improvement in structure and parsability. Hallucination eliminated. But the model now has a new problem: when uncertain, it goes silent instead of flagging its uncertainty. Useful information is lost without any signal to the reviewer.
 
 ---
 
@@ -97,14 +93,13 @@ Rules you MUST follow:
 **What changed from V2:** Added a `confidence` field per action item, expanded rules to cover disputed ownership, and added an `extraction_note` field to surface model uncertainty explicitly.
 
 **What worked:**
-- Case 03: Model now correctly returns `"owner": "Unclear"` and `"confidence": "low"` for the Stripe research item. No hallucinated certainty.
-- Case 05: Consistently returns empty `action_items: []` and populates `extraction_note` explaining no tasks were assigned. Zero hallucination across all test runs.
-- Case 04: All items correctly marked `"owner": "Unassigned"`, `"confidence": "low"`.
-- Case 01 and 02: High-confidence items correctly marked `"confidence": "high"`. Output remains clean and parseable.
+- Case 01: 4 action items, all [HIGH] confidence, owners and dates accurate.
+- Case 02: 2 action items, "EOD Thursday" preserved as-is. No fabrication.
+- Case 03: Stripe research task now preserved with `Owner: Unclear [LOW]` and an extraction_note explaining the ambiguity between Jen and Mike. This is the main improvement over V2.
+- Case 04: All 3 extracted items marked [LOW] due to unassigned owners. Honest and useful for reviewer prioritization.
+- Case 05: Empty `action_items: []` with extraction_note: "The meeting notes explicitly state no specific next steps were agreed upon." No hallucination.
 
 **What could still improve:**
-- The `extraction_note` field is sometimes verbose and inconsistently populated across cases.
-- For very long transcripts, the model occasionally misses action items buried in the middle — a chunking or retrieval strategy would help at scale.
-- The JSON output was valid on all test runs, but a production system should still validate schema before parsing.
+- Case 04: The onboarding flow redesign was classified as a decision rather than an action_item, resulting in only 3 extracted items instead of 4. The boundary between "a decision that implies a task" and "an action item without an assigned owner" is genuinely ambiguous — and the model resolved it differently than expected. This is an inherent limitation of the current schema design, not a prompting failure per se.
 
-**Verdict:** Best overall performance. Confidence signaling makes human review easier — low-confidence items become a natural review queue. Recommended as the deployed prompt for this prototype.
+**Verdict:** Best overall performance across all 5 cases. Recommended as the deployed prompt for this prototype.
