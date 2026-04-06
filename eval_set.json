@@ -1,0 +1,39 @@
+{
+  "eval_set": [
+    {
+      "id": "case_01",
+      "type": "normal",
+      "description": "Well-structured meeting with clear owners and deadlines",
+      "input": "Meeting: Q3 Marketing Planning — June 10, 2025\nAttendees: Sarah (PM), James (Design), Linda (Marketing), Tom (Engineering)\n\nWe reviewed the Q3 roadmap and aligned on the following. Sarah will finalize the product brief and share it with the team by June 17. James needs to deliver three homepage mockups for review by June 20. Linda will kick off the paid campaign no later than July 1 — she mentioned the budget has already been approved. Tom confirmed the new tracking pixel will be deployed to staging by June 18, pending QA sign-off.\n\nWe also agreed to move the weekly sync from Thursday to Wednesday starting next week. No objections raised.\n\nOpen question: Should we localize the landing page for the EU market before July 1? Decision deferred to next week.",
+      "expected_behavior": "Model should extract 4 action items with correct owners and dates, 1 decision (move weekly sync), and 1 open question (EU localization). Should NOT invent additional tasks."
+    },
+    {
+      "id": "case_02",
+      "type": "normal",
+      "description": "Short standup-style meeting with minimal content",
+      "input": "Quick sync — June 11, 2025\nAttendees: Rachel, David\n\nRachel is blocked on the vendor contract — David will follow up with legal today. Rachel will send the updated timeline to the client by EOD Thursday.",
+      "expected_behavior": "Model should extract exactly 2 action items. Output should be concise and not pad the response. Dates like 'EOD Thursday' should be preserved as-is since no absolute date is given."
+    },
+    {
+      "id": "case_03",
+      "type": "edge",
+      "description": "Messy, conversational transcript with no clear structure",
+      "input": "ok so we talked about the website thing again. jen was saying we really need to fix the checkout flow because customers keep dropping off. mike said yeah he looked at the analytics and its like 40% drop-off at payment. someone said maybe we should just use stripe instead of the custom thing. there was some back and forth. i think jen said she would look into stripe pricing? or was it mike. anyway we also talked about the blog — nobody has posted in like 3 months. we should probably do something about that. meeting ended kind of abruptly because of another call.",
+      "expected_behavior": "Model should identify probable action items despite ambiguity. Owner for Stripe research should be marked as 'Unclear' or 'Jen (unconfirmed)' — model must NOT confidently assign ownership it cannot verify. Blog neglect should surface as an open question or low-confidence action item."
+    },
+    {
+      "id": "case_04",
+      "type": "edge",
+      "description": "Tasks mentioned but no owners assigned",
+      "input": "Product Review Meeting — June 12, 2025\nAttendees: Full product team (8 people)\n\nThe team agreed that the onboarding flow needs a complete redesign before the August launch. A/B testing for the new pricing page should begin in the next two weeks. The error logging system has been flagged as broken — it needs to be fixed urgently. Someone should also update the internal wiki with the new API endpoints.",
+      "expected_behavior": "Model should list all 4 action items but mark owner as 'Unassigned' or 'TBD' for each. Must NOT invent or infer owners. Urgency cues like 'urgently' should be reflected in output."
+    },
+    {
+      "id": "case_05",
+      "type": "failure_hallucination_risk",
+      "description": "Pure discussion meeting with no action items — tests whether model hallucinates tasks",
+      "input": "Team Retrospective — June 13, 2025\nAttendees: Alex, Priya, Sam, Jordan\n\nThe team reflected on the past sprint. Everyone felt communication had improved since switching to async standups. There was some discussion about whether the sprint length should change — opinions were mixed, with two people preferring 2-week sprints and two preferring 3-week sprints. No consensus was reached. The team also talked about team morale generally and agreed things feel better than last quarter. The meeting ended with no specific next steps agreed upon.",
+      "expected_behavior": "Model should output an EMPTY action items list and correctly state that no decisions or tasks were made. A model that invents action items (e.g., 'Alex will follow up on sprint length') is hallucinating. This is the primary failure mode to watch for."
+    }
+  ]
+}
