@@ -18,7 +18,7 @@ Usage:
     python app.py --eval --prompt-version v2
 
 Requirements:
-    pip install google-generativeai python-dotenv
+    pip install google-genai python-dotenv
 
 Setup:
     Create a .env file with: GEMINI_API_KEY=your_key_here
@@ -33,7 +33,7 @@ import textwrap
 from datetime import datetime
 from pathlib import Path
 
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 API_KEY = os.environ.get("GEMINI_API_KEY")
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-2.5-flash"
 EVAL_SET_PATH = Path("eval_set.json")
 OUTPUT_DIR = Path("outputs")
 
@@ -115,13 +115,11 @@ def setup_client():
     if not API_KEY:
         print("[ERROR] GEMINI_API_KEY not found.")
         print("  → Create a .env file with: GEMINI_API_KEY=your_key_here")
-        print("  → Or set the environment variable directly.")
         sys.exit(1)
-    genai.configure(api_key=API_KEY)
-    return genai.GenerativeModel(MODEL_NAME)
+    return genai.Client(api_key=API_KEY)
 
 
-def call_llm(model, system_prompt: str, user_input: str) -> dict:
+def call_llm(client, system_prompt: str, user_input: str) -> dict:
     """
     Make a single LLM call and return parsed result.
     Returns a dict with 'raw', 'parsed', and 'error' keys.
@@ -129,7 +127,10 @@ def call_llm(model, system_prompt: str, user_input: str) -> dict:
     full_prompt = f"{system_prompt.strip()}\n\n---\nMEETING NOTES:\n{user_input.strip()}"
 
     try:
-        response = model.generate_content(full_prompt)
+        response = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=full_prompt
+        )
         raw_text = response.text.strip()
 
         # Strip markdown code fences if present
@@ -167,7 +168,6 @@ def format_output(case_id: str, result: dict, expected: str) -> str:
     else:
         parsed = result["parsed"]
 
-        # Decisions
         decisions = parsed.get("decisions", [])
         lines.append(f"\n📌 DECISIONS ({len(decisions)})")
         if decisions:
@@ -176,7 +176,6 @@ def format_output(case_id: str, result: dict, expected: str) -> str:
         else:
             lines.append("  (none)")
 
-        # Action Items
         items = parsed.get("action_items", [])
         lines.append(f"\n✅ ACTION ITEMS ({len(items)})")
         if items:
@@ -189,7 +188,6 @@ def format_output(case_id: str, result: dict, expected: str) -> str:
         else:
             lines.append("  (none — model correctly detected no action items)")
 
-        # Open Questions
         questions = parsed.get("open_questions", [])
         lines.append(f"\n❓ OPEN QUESTIONS ({len(questions)})")
         if questions:
@@ -198,7 +196,6 @@ def format_output(case_id: str, result: dict, expected: str) -> str:
         else:
             lines.append("  (none)")
 
-        # Extraction Note (v3 only)
         note = parsed.get("extraction_note", "")
         if note:
             lines.append(f"\n📝 EXTRACTION NOTE\n  {note}")
@@ -208,7 +205,7 @@ def format_output(case_id: str, result: dict, expected: str) -> str:
     return "\n".join(lines)
 
 
-def run_eval(model, prompt_version: str):
+def run_eval(client, prompt_version: str):
     """Run all eval set cases and save results."""
     if not EVAL_SET_PATH.exists():
         print(f"[ERROR] eval_set.json not found at {EVAL_SET_PATH}")
@@ -238,11 +235,10 @@ def run_eval(model, prompt_version: str):
         case_type = case["type"]
         print(f"  Processing {case_id} ({case_type})...", end=" ", flush=True)
 
-        result = call_llm(model, system_prompt, case["input"])
+        result = call_llm(client, system_prompt, case["input"])
         formatted = format_output(case_id, result, case["expected_behavior"])
         all_output.append(formatted)
 
-        # Summary row
         status = "✅ JSON OK" if result["parsed"] else "⚠️  Non-JSON"
         if result["error"]:
             status = f"❌ ERROR: {result['error']}"
@@ -252,7 +248,6 @@ def run_eval(model, prompt_version: str):
         )
         print(status)
 
-    # Print summary table
     print(f"\n{'─'*75}")
     print("SUMMARY")
     print(f"{'─'*75}")
@@ -260,18 +255,17 @@ def run_eval(model, prompt_version: str):
         print(row)
     print(f"{'─'*75}\n")
 
-    # Save full output
     with open(output_file, "w") as f:
         f.write("\n".join(all_output))
     print(f"✅ Full output saved to: {output_file}\n")
 
 
-def run_single(model, prompt_version: str, text: str, label: str = "custom_input"):
+def run_single(client, prompt_version: str, text: str, label: str = "custom_input"):
     """Run the model on a single input and print results."""
     system_prompt = PROMPTS[prompt_version]
     print(f"\n🚀 Running single input with prompt version: {prompt_version.upper()}")
 
-    result = call_llm(model, system_prompt, text)
+    result = call_llm(client, system_prompt, text)
     formatted = format_output(label, result, "N/A — single input mode")
     print(formatted)
 
@@ -303,19 +297,19 @@ def main():
                         help="Which prompt version to use (default: v3)")
 
     args = parser.parse_args()
-    model = setup_client()
+    client = setup_client()
 
     if args.eval:
-        run_eval(model, args.prompt_version)
+        run_eval(client, args.prompt_version)
     elif args.input:
         input_path = Path(args.input)
         if not input_path.exists():
             print(f"[ERROR] File not found: {args.input}")
             sys.exit(1)
         text = input_path.read_text()
-        run_single(model, args.prompt_version, text, label=input_path.stem)
+        run_single(client, args.prompt_version, text, label=input_path.stem)
     elif args.text:
-        run_single(model, args.prompt_version, args.text)
+        run_single(client, args.prompt_version, args.text)
 
 
 if __name__ == "__main__":
